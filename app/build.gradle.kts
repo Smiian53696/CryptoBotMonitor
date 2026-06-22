@@ -73,6 +73,7 @@ dependencies {
 
     // Obsługa coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
 
     testImplementation(libs.junit)
 

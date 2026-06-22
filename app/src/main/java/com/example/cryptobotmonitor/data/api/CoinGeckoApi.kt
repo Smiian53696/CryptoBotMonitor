@@ -15,6 +15,10 @@ interface CoinGeckoApi {
         @Query("vs_currency")
         currency: String = "usd",
 
+        // Konkretne kryptowaluty, np. bitcoin,ethereum
+        @Query("ids")
+        ids: String? = null,
+
         // Sortowanie
         @Query("order")
         order: String = "market_cap_desc",
