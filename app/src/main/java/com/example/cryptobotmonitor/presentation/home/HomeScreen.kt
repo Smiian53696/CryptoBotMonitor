@@ -38,6 +38,7 @@ import com.example.cryptobotmonitor.data.model.CoinModel
 fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
     onCoinClick: (String) -> Unit,
+    onAlertsClick: () -> Unit,
     onLogoutClick: () -> Unit
 ) {
 
@@ -63,10 +64,20 @@ fun HomeScreen(
                 fontWeight = FontWeight.Bold
             )
 
-            Button(
-                onClick = onLogoutClick
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(text = "Wyloguj")
+                Button(
+                    onClick = onAlertsClick
+                ) {
+                    Text("Alerty")
+                }
+
+                Button(
+                    onClick = onLogoutClick
+                ) {
+                    Text("Wyloguj")
+                }
             }
         }
 
