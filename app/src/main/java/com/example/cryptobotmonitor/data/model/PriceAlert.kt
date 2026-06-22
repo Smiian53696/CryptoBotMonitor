@@ -7,6 +7,6 @@ data class PriceAlert(
     val coinName: String = "",
     val targetPrice: Double = 0.0,
     val condition: String = "ABOVE", // gdy cena wyszcza
-    val isActive: Boolean = true,
+    val active: Boolean = true,
     val createdAt: Long = System.currentTimeMillis()
 )

@@ -30,6 +30,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cryptobotmonitor.data.model.PriceAlert
+import androidx.compose.ui.platform.LocalContext
+import com.example.cryptobotmonitor.worker.PriceAlertWorker
 
 @Composable
 fun AlertsScreen(
@@ -37,7 +39,7 @@ fun AlertsScreen(
     viewModel: AlertsViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
-
+    val context = LocalContext.current
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -118,6 +120,7 @@ fun AlertsScreen(
                 fontWeight = FontWeight.Bold
             )
 
+
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -153,6 +156,16 @@ fun AlertsScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Dodaj alert")
+            }
+        }
+        item {
+            OutlinedButton(
+                onClick = {
+                    PriceAlertWorker.runOnce(context)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Sprawdź alerty teraz")
             }
         }
 
@@ -238,6 +251,14 @@ fun AlertItem(
 
             Text(
                 text = "Warunek: cena $conditionText ${alert.targetPrice} USD"
+            )
+
+            Text(
+                text = if (alert.active) {
+                    "Status: aktywny"
+                } else {
+                    "Status: wykonany"
+                }
             )
 
             Spacer(modifier = Modifier.height(8.dp))

@@ -38,7 +38,7 @@ class AlertRepository {
             coinName = coinName,
             targetPrice = targetPrice,
             condition = condition,
-            isActive = true
+            active = true
         )
 
         // Zapis alertu w Firestore
