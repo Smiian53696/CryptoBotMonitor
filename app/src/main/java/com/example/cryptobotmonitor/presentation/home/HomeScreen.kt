@@ -37,7 +37,8 @@ import com.example.cryptobotmonitor.data.model.CoinModel
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
-    onCoinClick: (String) -> Unit
+    onCoinClick: (String) -> Unit,
+    onLogoutClick: () -> Unit
 ) {
 
     val coins by viewModel.coins.collectAsState()
@@ -51,11 +52,23 @@ fun HomeScreen(
     ) {
 
         // Tytuł aplikacji
-        Text(
-            text = "CryptoBot Monitor",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "CryptoBot Monitor",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            Button(
+                onClick = onLogoutClick
+            ) {
+                Text(text = "Wyloguj")
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
