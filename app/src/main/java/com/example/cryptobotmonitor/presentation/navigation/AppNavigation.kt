@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.cryptobotmonitor.presentation.alerts.AlertsScreen
 import com.example.cryptobotmonitor.presentation.details.DetailsScreen
 import com.example.cryptobotmonitor.presentation.home.HomeScreen
 import com.example.cryptobotmonitor.presentation.auth.LoginScreen
@@ -63,6 +64,9 @@ fun AppNavigation() {
                 onCoinClick = { coinId ->
                     navController.navigate("details/$coinId")
                 },
+                onAlertsClick = {
+                    navController.navigate("alerts")
+                },
                 onLogoutClick = {
                     FirebaseAuth.getInstance().signOut()
 
@@ -71,6 +75,13 @@ fun AppNavigation() {
                             inclusive = true
                         }
                     }
+                }
+            )
+        }
+        composable("alerts") {
+            AlertsScreen(
+                onBackClick = {
+                    navController.popBackStack()
                 }
             )
         }
