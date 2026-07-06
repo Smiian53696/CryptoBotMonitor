@@ -2,26 +2,29 @@ package com.example.cryptobotmonitor.data.model
 
 import com.google.gson.annotations.SerializedName
 
-// Model reprezentujący kryptowalutę z API CoinGecko
+// Model kryptowaluty pobieranej z API
 data class CoinModel(
-
-    // Id kryptowaluty
     val id: String,
-
-    // Symbol kryptowaluty
     val symbol: String,
-
-    // Nazwa kryptowaluty
     val name: String,
 
-    // Aktualna cena
     @SerializedName("current_price")
     val currentPrice: Double,
 
-    // Link do obrazka kryptowaluty
     val image: String,
 
-    // Zmiana ceny w ciągu 24h
     @SerializedName("price_change_percentage_24h")
-    val priceChange24h: Double?
+    val priceChange24h: Double? = null,
+
+    @SerializedName("market_cap")
+    val marketCap: Double? = null,
+
+    @SerializedName("total_volume")
+    val totalVolume: Double? = null,
+
+    @SerializedName("high_24h")
+    val high24h: Double? = null,
+
+    @SerializedName("low_24h")
+    val low24h: Double? = null
 )

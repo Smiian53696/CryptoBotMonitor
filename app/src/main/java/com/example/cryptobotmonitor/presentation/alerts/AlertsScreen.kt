@@ -32,14 +32,26 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cryptobotmonitor.data.model.PriceAlert
 import androidx.compose.ui.platform.LocalContext
 import com.example.cryptobotmonitor.worker.PriceAlertWorker
+import androidx.compose.runtime.LaunchedEffect
 
 @Composable
 fun AlertsScreen(
     onBackClick: () -> Unit,
+    initialCoinId: String = "",
+    initialCoinName: String = "",
     viewModel: AlertsViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    LaunchedEffect(initialCoinId, initialCoinName) {
+        if (initialCoinId.isNotBlank()) {
+            viewModel.setInitialCoinData(
+                coinId = initialCoinId,
+                coinName = initialCoinName
+            )
+        }
+    }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
