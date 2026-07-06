@@ -10,4 +10,11 @@ class CoinRepository {
     suspend fun getCoins(): List<CoinModel> {
         return RetrofitInstance.api.getCoins()
     }
+    // Pobranie jednej lub kilku kryptowalut po id
+    suspend fun getCoinsByIds(ids: String): List<CoinModel> {
+        return RetrofitInstance.api.getCoins(
+            ids = ids,
+            perPage = 50
+        )
+    }
 }

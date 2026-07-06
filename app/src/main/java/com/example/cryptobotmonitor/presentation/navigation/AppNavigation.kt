@@ -10,7 +10,7 @@ import com.example.cryptobotmonitor.presentation.home.HomeScreen
 import com.example.cryptobotmonitor.presentation.auth.LoginScreen
 import com.example.cryptobotmonitor.presentation.auth.RegisterScreen
 import com.google.firebase.auth.FirebaseAuth
-
+import com.example.cryptobotmonitor.presentation.bot.BotScreen
 // Główna nawigacja aplikacji
 @Composable
 fun AppNavigation() {
@@ -67,6 +67,9 @@ fun AppNavigation() {
                 onAlertsClick = {
                     navController.navigate("alerts")
                 },
+                onBotClick = {
+                    navController.navigate("bot")
+                },
                 onLogoutClick = {
                     FirebaseAuth.getInstance().signOut()
 
@@ -93,6 +96,13 @@ fun AppNavigation() {
 
             DetailsScreen(
                 coinId = coinId,
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable("bot") {
+            BotScreen(
                 onBackClick = {
                     navController.popBackStack()
                 }
