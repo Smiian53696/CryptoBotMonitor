@@ -33,12 +33,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.cryptobotmonitor.data.model.CoinModel
-
+import androidx.compose.material3.OutlinedButton
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
     onCoinClick: (String) -> Unit,
     onAlertsClick: () -> Unit,
+    onBotClick: () -> Unit,
     onLogoutClick: () -> Unit
 ) {
 
@@ -52,31 +53,46 @@ fun HomeScreen(
             .padding(16.dp)
     ) {
 
-        // Tytuł aplikacji
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        // Górna część ekranu
+        Column(
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                text = "CryptoBot Monitor",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "CryptoBot Monitor",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+
+                OutlinedButton(
+                    onClick = onLogoutClick
+                ) {
+                    Text("Wyloguj")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
-                    onClick = onAlertsClick
+                    onClick = onAlertsClick,
+                    modifier = Modifier.weight(1f)
                 ) {
                     Text("Alerty")
                 }
 
                 Button(
-                    onClick = onLogoutClick
+                    onClick = onBotClick,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Text("Wyloguj")
+                    Text("Bot")
                 }
             }
         }
