@@ -33,7 +33,7 @@ import com.example.cryptobotmonitor.data.model.CoinModel
 import java.util.Locale
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-
+import androidx.compose.material3.FilterChip
 @Composable
 fun DetailsScreen(
     coinId: String,
@@ -98,22 +98,36 @@ fun DetailsScreen(
 
             state.coin != null -> {
 
+
                 CoinDetailsContent(
                     coin = state.coin!!,
                     chartPoints = state.chartPoints,
+                    selectedPeriod = state.selectedPeriod,
+                    isChartLoading = state.isChartLoading,
+                    chartError = state.chartError,
+                    onPeriodChange = viewModel::changePeriod,
+                    onRetryChart = viewModel::retryChart,
                     onCreateAlertClick = onCreateAlertClick
                 )
+
             }
         }
     }
 }
 
+
 @Composable
 fun CoinDetailsContent(
     coin: CoinModel,
     chartPoints: List<ChartPoint>,
+    selectedPeriod: String,
+    isChartLoading: Boolean,
+    chartError: String?,
+    onPeriodChange: (String) -> Unit,
+    onRetryChart: () -> Unit,
     onCreateAlertClick: (String, String) -> Unit
 ) {
+
     val priceChange = coin.priceChange24h ?: 0.0
 
     val priceChangeColor =
@@ -164,16 +178,74 @@ fun CoinDetailsContent(
 
             Spacer(modifier = Modifier.height(20.dp))
 
+
+// Wykres ceny kryptowaluty
             Text(
-                text = "Wykres ceny z ostatnich 7 dni",
+                text = "Historia ceny",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
 
-            PriceLineChart(
-                points = chartPoints,
-                modifier = Modifier.fillMaxWidth()
+            Spacer(modifier = Modifier.height(8.dp))
+
+// Dostępne okresy wykresu
+            ChartPeriodSelector(
+                selectedPeriod = selectedPeriod,
+                onPeriodChange = onPeriodChange
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+// Wyświetlanie wykresu lub informacji o błędzie
+            when {
+
+                isChartLoading -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator()
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text("Ładowanie wykresu...")
+                    }
+                }
+
+                chartError != null -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = chartError,
+                            color = MaterialTheme.colorScheme.error
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedButton(
+                            onClick = onRetryChart
+                        ) {
+                            Text("Spróbuj ponownie")
+                        }
+                    }
+                }
+
+                else -> {
+                    PriceLineChart(
+                        points = chartPoints,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -257,4 +329,42 @@ fun formatNumber(value: Double?): String {
         "%,.2f",
         value
     )
+}
+
+// Wybór okresu wykresu
+@Composable
+fun ChartPeriodSelector(
+    selectedPeriod: String,
+    onPeriodChange: (String) -> Unit
+) {
+
+    val periods = listOf(
+        "1" to "24h",
+        "7" to "7 dni",
+        "30" to "30 dni",
+        "90" to "90 dni"
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+
+        periods.forEach { (value, label) ->
+
+            FilterChip(
+                selected = selectedPeriod == value,
+                onClick = {
+                    onPeriodChange(value)
+                },
+                label = {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
 }
