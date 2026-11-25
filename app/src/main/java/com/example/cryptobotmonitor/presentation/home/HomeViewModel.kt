@@ -1,6 +1,9 @@
 
 package com.example.cryptobotmonitor.presentation.home
 
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cryptobotmonitor.data.model.CoinModel
@@ -46,6 +49,10 @@ class HomeViewModel : ViewModel() {
     private val _showOnlyFavorites = MutableStateFlow(false)
     val showOnlyFavorites: StateFlow<Boolean> = _showOnlyFavorites
 
+    // Tekst wpisany w wyszukiwarce
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery
+
     // Informacja o błędzie ulubionych
     private val _favoriteError = MutableStateFlow<String?>(null)
     val favoriteError: StateFlow<String?> = _favoriteError
@@ -53,6 +60,36 @@ class HomeViewModel : ViewModel() {
     // Kryptowaluty, dla których trwa zapis
     private val _pendingFavoriteIds = MutableStateFlow<Set<String>>(emptySet())
     val pendingFavoriteIds: StateFlow<Set<String>> = _pendingFavoriteIds
+
+
+    // Filtrowanie kryptowalut według nazwy i symbolu
+    val filteredCoins: StateFlow<List<CoinModel>> = combine(
+        coins,
+        favoriteIds,
+        showOnlyFavorites,
+        searchQuery
+    ) { coinList, favorites, onlyFavorites, query ->
+
+        val searchText = query.trim()
+
+        coinList.filter { coin ->
+
+            val matchesFavorites =
+                !onlyFavorites || coin.id in favorites
+
+            val matchesSearch =
+                searchText.isBlank() ||
+                        coin.name.contains(searchText, ignoreCase = true) ||
+                        coin.symbol.contains(searchText, ignoreCase = true)
+
+            matchesFavorites && matchesSearch
+        }
+
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     init {
         startAutoRefresh()
@@ -145,6 +182,16 @@ class HomeViewModel : ViewModel() {
     // Zmiana filtra kryptowalut
     fun setShowOnlyFavorites(show: Boolean) {
         _showOnlyFavorites.value = show
+    }
+
+    // Aktualizacja tekstu wyszukiwania
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    // Czyszczenie wyszukiwarki
+    fun clearSearch() {
+        _searchQuery.value = ""
     }
 
     override fun onCleared() {

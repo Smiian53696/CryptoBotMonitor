@@ -38,12 +38,9 @@ fun HomeScreen(
     val favoriteError by viewModel.favoriteError.collectAsState()
     val pendingFavoriteIds by viewModel.pendingFavoriteIds.collectAsState()
 
-    // Filtrowanie listy kryptowalut
-    val displayedCoins = if (showOnlyFavorites) {
-        coins.filter { it.id in favoriteIds }
-    } else {
-        coins
-    }
+    // Dane wyszukiwania
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val displayedCoins by viewModel.filteredCoins.collectAsState()
 
     Column(
         modifier = Modifier
@@ -90,6 +87,39 @@ fun HomeScreen(
         }
 
         Spacer(modifier = Modifier.height(12.dp))
+
+        // Pole wyszukiwania kryptowalut
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = {
+                viewModel.setSearchQuery(it)
+            },
+            modifier = Modifier.fillMaxWidth(),
+            label = {
+                Text("Szukaj kryptowaluty")
+            },
+            placeholder = {
+                Text("np. Bitcoin lub BTC")
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(
+                        onClick = {
+                            viewModel.clearSearch()
+                        }
+                    ) {
+                        Text(
+                            text = "×",
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                    }
+                }
+            }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Przyciski do filtrowania listy
         Row(
@@ -152,22 +182,32 @@ fun HomeScreen(
                 }
             }
 
-            showOnlyFavorites && displayedCoins.isEmpty() -> {
+
+            displayedCoins.isEmpty() -> {
 
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (favoriteIds.isEmpty()) {
-                            "Brak ulubionych kryptowalut."
-                        } else {
-                            "Brak ulubionych na aktualnej liście."
+                        text = when {
+                            searchQuery.isNotBlank() ->
+                                "Nie znaleziono kryptowaluty."
+
+                            showOnlyFavorites && favoriteIds.isEmpty() ->
+                                "Brak ulubionych kryptowalut."
+
+                            showOnlyFavorites ->
+                                "Brak ulubionych na aktualnej liście."
+
+                            else ->
+                                "Brak kryptowalut do wyświetlenia."
                         },
                         color = Color.Gray
                     )
                 }
             }
+
 
             else -> {
 
