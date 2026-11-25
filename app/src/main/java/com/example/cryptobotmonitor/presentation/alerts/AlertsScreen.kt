@@ -1,38 +1,21 @@
+
 package com.example.cryptobotmonitor.presentation.alerts
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cryptobotmonitor.data.model.PriceAlert
-import androidx.compose.ui.platform.LocalContext
 import com.example.cryptobotmonitor.worker.PriceAlertWorker
-import androidx.compose.runtime.LaunchedEffect
 
 @Composable
 fun AlertsScreen(
@@ -41,9 +24,15 @@ fun AlertsScreen(
     initialCoinName: String = "",
     viewModel: AlertsViewModel = viewModel()
 ) {
+
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
+    var showCoinDialog by remember {
+        mutableStateOf(false)
+    }
+
+    // Dane przekazane z ekranu szczegółów
     LaunchedEffect(initialCoinId, initialCoinName) {
         if (initialCoinId.isNotBlank()) {
             viewModel.setInitialCoinData(
@@ -52,6 +41,17 @@ fun AlertsScreen(
             )
         }
     }
+
+    // Podział alertów na aktywne i wykonane
+    val activeAlerts = state.alerts.filter { it.active }
+    val completedAlerts = state.alerts.filter { !it.active }
+
+    val displayedAlerts = if (state.showCompletedAlerts) {
+        completedAlerts
+    } else {
+        activeAlerts
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -71,9 +71,7 @@ fun AlertsScreen(
                     fontWeight = FontWeight.Bold
                 )
 
-                OutlinedButton(
-                    onClick = onBackClick
-                ) {
+                OutlinedButton(onClick = onBackClick) {
                     Text("Wróć")
                 }
             }
@@ -87,41 +85,39 @@ fun AlertsScreen(
             )
         }
 
+        // Wybór kryptowaluty
         item {
-            OutlinedTextField(
-                value = state.coinId,
-                onValueChange = viewModel::onCoinIdChange,
-                label = {
-                    Text("Coin ID, np. bitcoin")
+            OutlinedButton(
+                onClick = {
+                    viewModel.onCoinSearchQueryChange("")
+                    showCoinDialog = true
                 },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
+                enabled = !state.isSaving
+            ) {
+                Text(
+                    text = if (state.coinName.isBlank()) {
+                        "Wybierz kryptowalutę"
+                    } else {
+                        state.coinName
+                    }
+                )
+            }
         }
 
-        item {
-            OutlinedTextField(
-                value = state.coinName,
-                onValueChange = viewModel::onCoinNameChange,
-                label = {
-                    Text("Nazwa, np. Bitcoin")
-                },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-        }
-
+        // Pole ceny
         item {
             OutlinedTextField(
                 value = state.targetPrice,
                 onValueChange = viewModel::onTargetPriceChange,
                 label = {
-                    Text("Cena alertu")
+                    Text("Cena alertu (USD)")
                 },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                enabled = !state.isSaving,
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number
+                    keyboardType = KeyboardType.Decimal
                 )
             )
         }
@@ -132,7 +128,6 @@ fun AlertsScreen(
                 fontWeight = FontWeight.Bold
             )
 
-
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -140,7 +135,8 @@ fun AlertsScreen(
                     selected = state.condition == "ABOVE",
                     onClick = {
                         viewModel.onConditionChange("ABOVE")
-                    }
+                    },
+                    enabled = !state.isSaving
                 )
 
                 Text("Cena powyżej")
@@ -153,23 +149,37 @@ fun AlertsScreen(
                     selected = state.condition == "BELOW",
                     onClick = {
                         viewModel.onConditionChange("BELOW")
-                    }
+                    },
+                    enabled = !state.isSaving
                 )
 
                 Text("Cena poniżej")
             }
         }
 
+        // Dodawanie alertu
         item {
             Button(
                 onClick = {
                     viewModel.addAlert()
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !state.isSaving
             ) {
-                Text("Dodaj alert")
+
+                if (state.isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text("Dodaj alert")
+                }
             }
         }
+
+        // Ręczne sprawdzanie alertów
         item {
             OutlinedButton(
                 onClick = {
@@ -181,19 +191,21 @@ fun AlertsScreen(
             }
         }
 
-        if (state.error != null) {
+        // Komunikaty o błędach
+        state.error?.let { error ->
             item {
                 Text(
-                    text = state.error ?: "",
+                    text = error,
                     color = MaterialTheme.colorScheme.error
                 )
             }
         }
 
-        if (state.message != null) {
+        // Komunikaty o wykonaniu operacji
+        state.message?.let { message ->
             item {
                 Text(
-                    text = state.message ?: "",
+                    text = message,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
@@ -209,24 +221,176 @@ fun AlertsScreen(
             )
         }
 
-        if (state.isLoading) {
-            item {
-                CircularProgressIndicator()
-            }
-        } else if (state.alerts.isEmpty()) {
-            item {
-                Text("Nie masz jeszcze żadnych alertów.")
-            }
-        } else {
-            items(state.alerts) { alert ->
-                AlertItem(
-                    alert = alert,
-                    onDeleteClick = {
-                        viewModel.deleteAlert(alert.id)
-                    }
+        // Filtrowanie alertów
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+
+                FilterChip(
+                    selected = !state.showCompletedAlerts,
+                    onClick = {
+                        viewModel.setShowCompletedAlerts(false)
+                    },
+                    label = {
+                        Text("Aktywne (${activeAlerts.size})")
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+
+                FilterChip(
+                    selected = state.showCompletedAlerts,
+                    onClick = {
+                        viewModel.setShowCompletedAlerts(true)
+                    },
+                    label = {
+                        Text("Wykonane (${completedAlerts.size})")
+                    },
+                    modifier = Modifier.weight(1f)
                 )
             }
         }
+
+        when {
+
+            state.isLoading -> {
+                item {
+                    CircularProgressIndicator()
+                }
+            }
+
+            displayedAlerts.isEmpty() -> {
+                item {
+                    Text(
+                        text = if (state.showCompletedAlerts) {
+                            "Brak wykonanych alertów."
+                        } else {
+                            "Brak aktywnych alertów."
+                        }
+                    )
+                }
+            }
+
+            else -> {
+                items(
+                    items = displayedAlerts,
+                    key = { it.id }
+                ) { alert ->
+
+                    AlertItem(
+                        alert = alert,
+                        onDeleteClick = {
+                            viewModel.deleteAlert(alert.id)
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    // Okno wyboru kryptowaluty
+    if (showCoinDialog) {
+
+        val searchText = state.coinSearchQuery.trim()
+
+        val filteredCoins = state.availableCoins.filter { coin ->
+            coin.name.contains(searchText, ignoreCase = true) ||
+                    coin.symbol.contains(searchText, ignoreCase = true)
+        }
+
+        AlertDialog(
+            onDismissRequest = {
+                showCoinDialog = false
+            },
+            title = {
+                Text("Wybierz kryptowalutę")
+            },
+            text = {
+                Column {
+
+                    OutlinedTextField(
+                        value = state.coinSearchQuery,
+                        onValueChange =
+                            viewModel::onCoinSearchQueryChange,
+                        label = {
+                            Text("Szukaj kryptowaluty")
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    when {
+
+                        state.isCoinsLoading -> {
+                            CircularProgressIndicator()
+                        }
+
+                        state.coinsError != null -> {
+
+                            Text(
+                                text = state.coinsError ?: "",
+                                color = MaterialTheme.colorScheme.error
+                            )
+
+                            Button(
+                                onClick = {
+                                    viewModel.loadAvailableCoins()
+                                }
+                            ) {
+                                Text("Spróbuj ponownie")
+                            }
+                        }
+
+                        filteredCoins.isEmpty() -> {
+                            Text("Nie znaleziono kryptowaluty.")
+                        }
+
+                        else -> {
+
+                            LazyColumn(
+                                modifier = Modifier.heightIn(
+                                    max = 300.dp
+                                ),
+                                verticalArrangement =
+                                    Arrangement.spacedBy(4.dp)
+                            ) {
+
+                                items(
+                                    items = filteredCoins,
+                                    key = { it.id }
+                                ) { coin ->
+
+                                    TextButton(
+                                        onClick = {
+                                            viewModel.selectCoin(coin)
+                                            showCoinDialog = false
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(
+                                            text = "${coin.name} (${coin.symbol.uppercase()})",
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showCoinDialog = false
+                    }
+                ) {
+                    Text("Anuluj")
+                }
+            }
+        )
     }
 }
 
@@ -235,12 +399,12 @@ fun AlertItem(
     alert: PriceAlert,
     onDeleteClick: () -> Unit
 ) {
-    val conditionText =
-        if (alert.condition == "ABOVE") {
-            "powyżej"
-        } else {
-            "poniżej"
-        }
+
+    val conditionText = if (alert.condition == "ABOVE") {
+        "powyżej"
+    } else {
+        "poniżej"
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -248,34 +412,46 @@ fun AlertItem(
             defaultElevation = 4.dp
         )
     ) {
+
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Text(
-                text = alert.coinName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                Text(
+                    text = alert.coinName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = if (alert.active) {
+                        "Aktywny"
+                    } else {
+                        "Wykonany"
+                    },
+                    color = if (alert.active) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "ID: ${alert.coinId}"
-            )
-
-            Text(
-                text = "Warunek: cena $conditionText ${alert.targetPrice} USD"
-            )
-
-            Text(
-                text = if (alert.active) {
-                    "Status: aktywny"
-                } else {
-                    "Status: wykonany"
-                }
+                text = "Cena $conditionText ${alert.targetPrice} USD"
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Button(
+            OutlinedButton(
                 onClick = onDeleteClick
             ) {
                 Text("Usuń")
@@ -283,4 +459,3 @@ fun AlertItem(
         }
     }
 }
-

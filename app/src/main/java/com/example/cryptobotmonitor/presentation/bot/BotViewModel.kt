@@ -69,11 +69,18 @@ class BotViewModel : ViewModel() {
         }
     }
 
+
     private suspend fun handleCommand(command: String): String {
-        val cleanCommand = command.trim().lowercase()
-        val parts = cleanCommand.split(Regex("\\s+"))
+
+        val cleanCommand = command
+            .trim()
+            .lowercase()
+            .replace(Regex("\\s+"), " ")
+
+        val parts = cleanCommand.split(" ")
 
         return when {
+
             cleanCommand == "pomoc" -> {
                 getHelpText()
             }
@@ -82,15 +89,27 @@ class BotViewModel : ViewModel() {
                 showMyAlerts()
             }
 
-            parts.size >= 2 && parts[0] == "cena" -> {
-                val coinId = parts[1]
-                showCoinPrice(coinId)
+            parts[0] == "cena" -> {
+
+                if (parts.size != 2) {
+                    return "Poprawna komenda: cena bitcoin"
+                }
+
+                showCoinPrice(parts[1])
             }
 
-            parts.size >= 4 && parts[0] == "alert" -> {
+            parts[0] == "alert" -> {
+
+                if (parts.size != 4) {
+                    return "Poprawna komenda: alert bitcoin powyżej 100000"
+                }
+
                 val coinId = parts[1]
                 val conditionText = parts[2]
-                val price = parts[3].replace(",", ".").toDoubleOrNull()
+
+                val price = parts[3]
+                    .replace(",", ".")
+                    .toDoubleOrNull()
 
                 addPriceAlert(
                     coinId = coinId,
@@ -99,14 +118,13 @@ class BotViewModel : ViewModel() {
                 )
             }
 
-            parts.size >= 3 && parts[0] == "usuń" && parts[1] == "alert" -> {
-                val coinId = parts[2]
-                deleteAlert(coinId)
-            }
+            parts[0] == "usuń" || parts[0] == "usun" -> {
 
-            parts.size >= 3 && parts[0] == "usun" && parts[1] == "alert" -> {
-                val coinId = parts[2]
-                deleteAlert(coinId)
+                if (parts.size != 3 || parts[1] != "alert") {
+                    return "Poprawna komenda: usuń alert bitcoin"
+                }
+
+                deleteAlert(parts[2])
             }
 
             else -> {
@@ -137,46 +155,60 @@ class BotViewModel : ViewModel() {
         }
     }
 
+
     private suspend fun addPriceAlert(
         coinId: String,
         conditionText: String,
         price: Double?
     ): String {
-        if (price == null || price <= 0) {
-            return "Podaj poprawną cenę alertu."
+
+        // Sprawdzenie poprawności ceny
+        if (price == null || !price.isFinite() || price <= 0) {
+            return "Podaj poprawną cenę większą od zera."
         }
 
-        val condition =
-            when (conditionText) {
-                "powyżej", "powyzej" -> "ABOVE"
-                "poniżej", "ponizej" -> "BELOW"
-                else -> return "Warunek musi być: powyżej albo poniżej."
-            }
+        // Sprawdzenie warunku alertu
+        val condition = when (conditionText) {
+            "powyżej", "powyzej" -> "ABOVE"
+            "poniżej", "ponizej" -> "BELOW"
+            else -> return "Warunek musi być: powyżej albo poniżej."
+        }
 
         return try {
-            // Pobranie nazwy kryptowaluty z API
-            val coins = coinRepository.getCoinsByIds(coinId)
-            val coin = coins.firstOrNull()
 
-            val coinName = coin?.name ?: coinId
+            // Sprawdzenie czy kryptowaluta istnieje
+            val coin = coinRepository
+                .getCoinsByIds(coinId)
+                .firstOrNull { it.id.equals(coinId, ignoreCase = true) }
+                ?: return "Nie znaleziono kryptowaluty: $coinId"
 
             // Dodanie alertu do Firestore
             val success = alertRepository.addAlertSuspend(
-                coinId = coinId,
-                coinName = coinName,
+                coinId = coin.id,
+                coinName = coin.name,
                 targetPrice = price,
                 condition = condition
             )
 
             if (success) {
-                "Dodano alert dla $coinName na cenę $conditionText $price USD."
+                "Dodano alert dla ${coin.name} na cenę $conditionText $price USD."
             } else {
                 "Nie udało się dodać alertu. Sprawdź, czy jesteś zalogowany."
             }
+
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: retrofit2.HttpException) {
+            if (e.code() == 429) {
+                "Przekroczono limit API. Spróbuj ponownie później."
+            } else {
+                "Nie udało się pobrać danych kryptowaluty."
+            }
         } catch (e: Exception) {
-            "Nie udało się dodać alertu."
+            "Nie udało się dodać alertu. ${e.message ?: ""}"
         }
     }
+
 
     private suspend fun showMyAlerts(): String {
         return try {
