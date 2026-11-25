@@ -84,4 +84,23 @@ class FavoriteRepository {
                 onResult(favorites)
             }
     }
+
+    // Pobieranie listy ulubionych kryptowalut
+    suspend fun getUserFavorites(): List<FavoriteCoin> {
+
+        val userId = auth.currentUser?.uid
+            ?: throw IllegalStateException(
+                "Użytkownik nie jest zalogowany."
+            )
+
+        return favoritesCollection
+            .whereEqualTo("userId", userId)
+            .get()
+            .await()
+            .documents
+            .mapNotNull { document ->
+                document.toObject(FavoriteCoin::class.java)
+            }
+    }
+
 }
