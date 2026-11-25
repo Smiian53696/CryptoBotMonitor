@@ -1,5 +1,10 @@
 package com.example.cryptobotmonitor.presentation.alerts
 
+import androidx.lifecycle.viewModelScope
+import com.example.cryptobotmonitor.data.model.CoinModel
+import com.example.cryptobotmonitor.data.repository.CoinRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModel
 import com.example.cryptobotmonitor.data.model.PriceAlert
 import com.example.cryptobotmonitor.data.repository.AlertRepository
@@ -7,6 +12,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+
 
 data class AlertsUiState(
     val alerts: List<PriceAlert> = emptyList(),
@@ -16,12 +22,26 @@ data class AlertsUiState(
     val condition: String = "ABOVE",
     val isLoading: Boolean = true,
     val error: String? = null,
-    val message: String? = null
+    val message: String? = null,
+
+    // Dane do wyboru kryptowaluty
+    val availableCoins: List<CoinModel> = emptyList(),
+    val coinSearchQuery: String = "",
+    val isCoinsLoading: Boolean = false,
+    val coinsError: String? = null,
+
+    // Filtrowanie alertów
+    val showCompletedAlerts: Boolean = false,
+
+    // Informacja o zapisywaniu alertu
+    val isSaving: Boolean = false
 )
+
 
 class AlertsViewModel : ViewModel() {
 
     private val repository = AlertRepository()
+    private val coinRepository = CoinRepository()
 
     private val _uiState = MutableStateFlow(AlertsUiState())
     val uiState: StateFlow<AlertsUiState> = _uiState
@@ -30,6 +50,7 @@ class AlertsViewModel : ViewModel() {
 
     init {
         loadAlerts()
+        loadAvailableCoins()
     }
 
     private fun loadAlerts() {
@@ -53,6 +74,69 @@ class AlertsViewModel : ViewModel() {
                 }
             }
         )
+    }
+
+    // Pobieranie kryptowalut do formularza alertu
+    fun loadAvailableCoins() {
+
+        if (_uiState.value.isCoinsLoading) return
+
+        _uiState.update {
+            it.copy(
+                isCoinsLoading = true,
+                coinsError = null
+            )
+        }
+
+        viewModelScope.launch {
+            try {
+                val coins = coinRepository.getCoins()
+
+                _uiState.update {
+                    it.copy(
+                        availableCoins = coins,
+                        isCoinsLoading = false
+                    )
+                }
+
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isCoinsLoading = false,
+                        coinsError = "Nie udało się pobrać kryptowalut."
+                    )
+                }
+            }
+        }
+    }
+
+    // Wybór kryptowaluty z listy
+    fun selectCoin(coin: CoinModel) {
+        _uiState.update {
+            it.copy(
+                coinId = coin.id,
+                coinName = coin.name,
+                coinSearchQuery = "",
+                error = null,
+                message = null
+            )
+        }
+    }
+
+    // Wyszukiwanie kryptowaluty
+    fun onCoinSearchQueryChange(query: String) {
+        _uiState.update {
+            it.copy(coinSearchQuery = query)
+        }
+    }
+
+    // Zmiana widoku alertów
+    fun setShowCompletedAlerts(show: Boolean) {
+        _uiState.update {
+            it.copy(showCompletedAlerts = show)
+        }
     }
 
     fun onCoinIdChange(value: String) {
@@ -91,24 +175,57 @@ class AlertsViewModel : ViewModel() {
         }
     }
 
+
     fun addAlert() {
         val state = _uiState.value
 
-        // Zamiana przecinka na kropkę, żeby działało 12,5 i 12.5
-        val price = state.targetPrice.replace(",", ".").toDoubleOrNull()
+        // Blokada ponownego zapisu
+        if (state.isSaving) return
 
+        // Zamiana przecinka na kropkę
+        val price = state.targetPrice
+            .trim()
+            .replace(",", ".")
+            .toDoubleOrNull()
+
+        // Sprawdzenie kryptowaluty
         if (state.coinId.isBlank() || state.coinName.isBlank()) {
             _uiState.update {
-                it.copy(error = "Wpisz id oraz nazwę kryptowaluty.")
+                it.copy(
+                    error = "Wybierz kryptowalutę.",
+                    message = null
+                )
             }
             return
         }
 
-        if (price == null || price <= 0) {
+        // Sprawdzenie poprawności ceny
+        if (price == null || !price.isFinite() || price <= 0) {
             _uiState.update {
-                it.copy(error = "Wpisz poprawną cenę.")
+                it.copy(
+                    error = "Cena musi być poprawna i większa od zera.",
+                    message = null
+                )
             }
             return
+        }
+
+        // Sprawdzenie warunku alertu
+        if (state.condition != "ABOVE" &&
+            state.condition != "BELOW"
+        ) {
+            _uiState.update {
+                it.copy(error = "Wybierz poprawny warunek alertu.")
+            }
+            return
+        }
+
+        _uiState.update {
+            it.copy(
+                isSaving = true,
+                error = null,
+                message = null
+            )
         }
 
         // Dodanie alertu do Firestore
@@ -124,19 +241,25 @@ class AlertsViewModel : ViewModel() {
                     it.copy(
                         coinId = "",
                         coinName = "",
+                        coinSearchQuery = "",
                         targetPrice = "",
                         condition = "ABOVE",
+                        isSaving = false,
                         error = null,
                         message = "Alert został dodany."
                     )
                 }
             } else {
                 _uiState.update {
-                    it.copy(error = message)
+                    it.copy(
+                        isSaving = false,
+                        error = message ?: "Nie udało się dodać alertu."
+                    )
                 }
             }
         }
     }
+
 
     fun deleteAlert(alertId: String) {
         // Usunięcie alertu
