@@ -1,5 +1,6 @@
 package com.example.cryptobotmonitor.presentation.navigation
 
+import com.example.cryptobotmonitor.presentation.details.DetailsScreen
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -11,6 +12,10 @@ import com.example.cryptobotmonitor.presentation.auth.LoginScreen
 import com.example.cryptobotmonitor.presentation.auth.RegisterScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.example.cryptobotmonitor.presentation.bot.BotScreen
+import android.net.Uri
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+
 // Główna nawigacja aplikacji
 @Composable
 fun AppNavigation() {
@@ -81,8 +86,26 @@ fun AppNavigation() {
                 }
             )
         }
-        composable("alerts") {
+        composable(
+            route = "alerts?coinId={coinId}&coinName={coinName}",
+            arguments = listOf(
+                navArgument("coinId") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+                navArgument("coinName") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                }
+            )
+        ) { backStackEntry ->
+
+            val coinId = backStackEntry.arguments?.getString("coinId") ?: ""
+            val coinName = backStackEntry.arguments?.getString("coinName") ?: ""
+
             AlertsScreen(
+                initialCoinId = coinId,
+                initialCoinName = coinName,
                 onBackClick = {
                     navController.popBackStack()
                 }
@@ -98,6 +121,15 @@ fun AppNavigation() {
                 coinId = coinId,
                 onBackClick = {
                     navController.popBackStack()
+                },
+                onCreateAlertClick = { selectedCoinId, selectedCoinName ->
+
+                    val encodedCoinId = Uri.encode(selectedCoinId)
+                    val encodedCoinName = Uri.encode(selectedCoinName)
+
+                    navController.navigate(
+                        "alerts?coinId=$encodedCoinId&coinName=$encodedCoinName"
+                    )
                 }
             )
         }

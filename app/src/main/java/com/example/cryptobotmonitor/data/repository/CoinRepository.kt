@@ -17,4 +17,12 @@ class CoinRepository {
             perPage = 50
         )
     }
+    // Pobranie danych do wykresu ceny
+    suspend fun getMarketChart(
+        coinId: String,
+        days: String = "7"
+    ) = RetrofitInstance.api.getMarketChart(
+        coinId = coinId,
+        days = days
+    )
 }

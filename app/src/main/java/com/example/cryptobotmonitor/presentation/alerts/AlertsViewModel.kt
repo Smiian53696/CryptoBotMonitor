@@ -79,6 +79,18 @@ class AlertsViewModel : ViewModel() {
         }
     }
 
+    fun setInitialCoinData(
+        coinId: String,
+        coinName: String
+    ) {
+        _uiState.update {
+            it.copy(
+                coinId = coinId,
+                coinName = coinName
+            )
+        }
+    }
+
     fun addAlert() {
         val state = _uiState.value
 
