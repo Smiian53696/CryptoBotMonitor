@@ -1,26 +1,12 @@
+
 package com.example.cryptobotmonitor.presentation.home
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.Button
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -33,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.cryptobotmonitor.data.model.CoinModel
-import androidx.compose.material3.OutlinedButton
+
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
@@ -47,6 +33,18 @@ fun HomeScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
 
+    val favoriteIds by viewModel.favoriteIds.collectAsState()
+    val showOnlyFavorites by viewModel.showOnlyFavorites.collectAsState()
+    val favoriteError by viewModel.favoriteError.collectAsState()
+    val pendingFavoriteIds by viewModel.pendingFavoriteIds.collectAsState()
+
+    // Filtrowanie listy kryptowalut
+    val displayedCoins = if (showOnlyFavorites) {
+        coins.filter { it.id in favoriteIds }
+    } else {
+        coins
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -54,50 +52,84 @@ fun HomeScreen(
     ) {
 
         // Górna część ekranu
-        Column(
-            modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "CryptoBot Monitor",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+            Text(
+                text = "CryptoBot Monitor",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
 
-                OutlinedButton(
-                    onClick = onLogoutClick
-                ) {
-                    Text("Wyloguj")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = onAlertsClick,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Alerty")
-                }
-
-                Button(
-                    onClick = onBotClick,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Bot")
-                }
+            OutlinedButton(onClick = onLogoutClick) {
+                Text("Wyloguj")
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                onClick = onAlertsClick,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Alerty")
+            }
+
+            Button(
+                onClick = onBotClick,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Bot")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Przyciski do filtrowania listy
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+
+            FilterChip(
+                selected = !showOnlyFavorites,
+                onClick = {
+                    viewModel.setShowOnlyFavorites(false)
+                },
+                label = {
+                    Text("Wszystkie")
+                },
+                modifier = Modifier.weight(1f)
+            )
+
+            FilterChip(
+                selected = showOnlyFavorites,
+                onClick = {
+                    viewModel.setShowOnlyFavorites(true)
+                },
+                label = {
+                    Text("Ulubione (${favoriteIds.size})")
+                },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Błąd związany z ulubionymi
+        favoriteError?.let { message ->
+            Text(
+                text = message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         when {
 
@@ -105,7 +137,7 @@ fun HomeScreen(
                 CircularProgressIndicator()
             }
 
-            error != null -> {
+            error != null && coins.isEmpty() -> {
 
                 Text(text = error ?: "Nieznany błąd")
 
@@ -116,7 +148,24 @@ fun HomeScreen(
                         viewModel.loadCoins()
                     }
                 ) {
-                    Text(text = "Spróbuj ponownie")
+                    Text("Spróbuj ponownie")
+                }
+            }
+
+            showOnlyFavorites && displayedCoins.isEmpty() -> {
+
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (favoriteIds.isEmpty()) {
+                            "Brak ulubionych kryptowalut."
+                        } else {
+                            "Brak ulubionych na aktualnej liście."
+                        },
+                        color = Color.Gray
+                    )
                 }
             }
 
@@ -126,15 +175,23 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
 
-                    items(coins) { coin ->
+                    items(
+                        items = displayedCoins,
+                        key = { it.id }
+                    ) { coin ->
 
                         CoinItem(
                             coin = coin,
+                            isFavorite = coin.id in favoriteIds,
+                            isFavoritePending =
+                                coin.id in pendingFavoriteIds,
+                            onFavoriteClick = {
+                                viewModel.toggleFavorite(coin)
+                            },
                             onClick = {
                                 onCoinClick(coin.id)
                             }
                         )
-
                     }
                 }
             }
@@ -145,10 +202,13 @@ fun HomeScreen(
 @Composable
 fun CoinItem(
     coin: CoinModel,
+    isFavorite: Boolean,
+    isFavoritePending: Boolean,
+    onFavoriteClick: () -> Unit,
     onClick: () -> Unit
 ) {
 
-    // Kolor zależny od wzrostu lub spadku ceny
+    // Kolor zależny od zmiany ceny
     val priceColor =
         if ((coin.priceChange24h ?: 0.0) >= 0)
             Color(0xFF4CAF50)
@@ -158,76 +218,86 @@ fun CoinItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {
-                onClick()
-            },
+            .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(
             defaultElevation = 6.dp
         )
-
     ) {
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-
-            verticalAlignment = Alignment.CenterVertically,
-
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically
+            // Logo kryptowaluty
+            AsyncImage(
+                model = coin.image,
+                contentDescription = coin.name,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(50))
+            )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
             ) {
 
-                // Logo kryptowaluty
-                AsyncImage(
-                    model = coin.image,
-                    contentDescription = coin.name,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(50))
+                Text(
+                    text = coin.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
 
-                Spacer(modifier = Modifier.size(12.dp))
-
-                Column {
-
-                    // Nazwa kryptowaluty
-                    Text(
-                        text = coin.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    // Symbol kryptowaluty
-                    Text(
-                        text = coin.symbol.uppercase(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
-                }
+                Text(
+                    text = coin.symbol.uppercase(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
             }
 
             Column(
                 horizontalAlignment = Alignment.End
             ) {
 
-                // Aktualna cena
                 Text(
                     text = "$${String.format("%.2f", coin.currentPrice)}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
 
-                // Zmiana ceny w %
                 Text(
                     text = "${String.format("%.2f", coin.priceChange24h ?: 0.0)}%",
                     color = priceColor,
                     fontWeight = FontWeight.Bold
                 )
+            }
+
+            // Dodawanie i usuwanie z ulubionych
+            IconButton(
+                onClick = onFavoriteClick,
+                enabled = !isFavoritePending
+            ) {
+                if (isFavoritePending) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = if (isFavorite) "★" else "☆",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = if (isFavorite) {
+                            Color(0xFFFFB300)
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
             }
         }
     }
