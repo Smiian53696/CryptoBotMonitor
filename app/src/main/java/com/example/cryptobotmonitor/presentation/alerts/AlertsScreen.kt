@@ -178,7 +178,10 @@ fun AlertsScreen(
                 }
             }
         }
-
+        // Informacje o monitorowaniu cen
+        item {
+            MonitoringStatusCard()
+        }
         // Ręczne sprawdzanie alertów
         item {
             OutlinedButton(
