@@ -6,7 +6,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.tasks.await
 
-class AlertRepository {
+class AlertRepository : AlertRepositoryInterface {
 
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
@@ -14,7 +14,7 @@ class AlertRepository {
     // Kolekcja z alertami w Firestore
     private val alertsCollection = firestore.collection("alerts")
 
-    fun addAlert(
+    override fun addAlert(
         coinId: String,
         coinName: String,
         targetPrice: Double,
@@ -51,7 +51,7 @@ class AlertRepository {
                 onResult(false, exception.localizedMessage ?: "Nie udało się dodać alertu.")
             }
     }
-    suspend fun getUserAlertsOnce(): List<PriceAlert> {
+    override suspend fun getUserAlertsOnce(): List<PriceAlert> {
         val userId = auth.currentUser?.uid ?: return emptyList()
 
         // Pobranie alertów użytkownika tylko jeden raz
@@ -65,7 +65,7 @@ class AlertRepository {
         }
     }
 
-    suspend fun addAlertSuspend(
+    override suspend fun addAlertSuspend(
         coinId: String,
         coinName: String,
         targetPrice: Double,
@@ -92,7 +92,7 @@ class AlertRepository {
         return true
     }
 
-    suspend fun deleteAlertByCoinId(coinId: String): Boolean {
+    override suspend fun deleteAlertByCoinId(coinId: String): Boolean {
         val userId = auth.currentUser?.uid ?: return false
 
         // Szukanie alertów dla wybranej kryptowaluty
@@ -113,7 +113,7 @@ class AlertRepository {
 
         return true
     }
-    fun observeUserAlerts(
+    override fun observeUserAlerts(
         onResult: (List<PriceAlert>) -> Unit,
         onError: (String) -> Unit
     ): ListenerRegistration? {
@@ -143,7 +143,7 @@ class AlertRepository {
             }
     }
 
-    fun deleteAlert(
+    override fun deleteAlert(
         alertId: String,
         onResult: (Boolean, String?) -> Unit
     ) {

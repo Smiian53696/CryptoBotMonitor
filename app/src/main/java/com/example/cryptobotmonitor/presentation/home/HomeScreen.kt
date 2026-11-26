@@ -1,5 +1,5 @@
 package com.example.cryptobotmonitor.presentation.home
-
+import com.example.cryptobotmonitor.domain.CoinFilter
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.ui.geometry.Offset
@@ -53,26 +53,13 @@ fun HomeScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
 
     // Filtrowanie według aktualnego ekranu i wyszukiwania
-    val searchText = searchQuery.trim()
-
-    val displayedCoins = coins.filter { coin ->
-
-        val matchesFavorites =
-            !onlyFavorites || coin.id in favoriteIds
-
-        val matchesSearch =
-            searchText.isBlank() ||
-                    coin.name.contains(
-                        searchText,
-                        ignoreCase = true
-                    ) ||
-                    coin.symbol.contains(
-                        searchText,
-                        ignoreCase = true
-                    )
-
-        matchesFavorites && matchesSearch
-    }
+    // Filtrowanie kryptowalut
+    val displayedCoins = CoinFilter.filterCoins(
+        coins = coins,
+        favoriteIds = favoriteIds,
+        onlyFavorites = onlyFavorites,
+        query = searchQuery
+    )
 
     Column(
         modifier = Modifier

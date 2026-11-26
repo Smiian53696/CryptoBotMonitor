@@ -1,6 +1,6 @@
 
 package com.example.cryptobotmonitor.presentation.details
-
+import com.example.cryptobotmonitor.domain.ChartDataProcessor
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
+import com.example.cryptobotmonitor.data.repository.CoinRepositoryInterface
 // Punkt na wykresie
 data class ChartPoint(
     val time: Long,
@@ -32,9 +32,10 @@ data class DetailsUiState(
     val chartError: String? = null
 )
 
-class DetailsViewModel : ViewModel() {
-
-    private val coinRepository = CoinRepository()
+class DetailsViewModel(
+    private val coinRepository: CoinRepositoryInterface =
+        CoinRepository()
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DetailsUiState())
     val uiState: StateFlow<DetailsUiState> = _uiState
@@ -167,24 +168,9 @@ class DetailsViewModel : ViewModel() {
                 )
 
                 // Zamiana danych API na punkty wykresu
-                val points = chart.prices.mapNotNull { item ->
-
-                    val time = item.getOrNull(0)?.toLong()
-                    val price = item.getOrNull(1)
-
-                    if (time != null &&
-                        price != null &&
-                        price.isFinite()
-                    ) {
-                        ChartPoint(
-                            time = time,
-                            price = price
-                        )
-                    } else {
-                        null
-                    }
-
-                }.sortedBy { it.time }
+                val points = ChartDataProcessor.processPrices(
+                    chart.prices
+                )
 
                 _uiState.update {
                     it.copy(

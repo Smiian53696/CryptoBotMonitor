@@ -12,6 +12,13 @@ import java.util.Locale
 import com.example.cryptobotmonitor.data.model.CoinModel
 import kotlinx.coroutines.CancellationException
 import com.example.cryptobotmonitor.data.repository.FavoriteRepository
+import com.example.cryptobotmonitor.validation.AlertValidator
+import com.example.cryptobotmonitor.domain.BotCommandParser
+import com.example.cryptobotmonitor.domain.BotCommandType
+import com.example.cryptobotmonitor.data.repository.CoinRepositoryInterface
+import com.example.cryptobotmonitor.data.repository.AlertRepositoryInterface
+import com.example.cryptobotmonitor.data.repository.FavoriteRepositoryInterface
+
 data class BotMessage(
     val text: String,
     val isUser: Boolean
@@ -28,12 +35,17 @@ data class BotUiState(
     val isLoading: Boolean = false
 )
 
-class BotViewModel : ViewModel() {
+class BotViewModel(
+    private val coinRepository: CoinRepositoryInterface =
+        CoinRepository(),
 
-    private val coinRepository = CoinRepository()
-    private val alertRepository = AlertRepository()
+    private val alertRepository: AlertRepositoryInterface =
+        AlertRepository(),
 
-    private val favoriteRepository = FavoriteRepository()
+    private val favoriteRepository: FavoriteRepositoryInterface =
+        FavoriteRepository()
+
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BotUiState())
     val uiState: StateFlow<BotUiState> = _uiState
@@ -129,116 +141,84 @@ class BotViewModel : ViewModel() {
 
 
 
-    private suspend fun handleCommand(command: String): String {
 
-        val cleanCommand = command
-            .trim()
-            .lowercase()
-            .replace(Regex("\\s+"), " ")
+    // Obsługa komend użytkownika
+    private suspend fun handleCommand(
+        command: String
+    ): String {
 
-        val parts = cleanCommand.split(" ")
+        val parsedCommand = BotCommandParser.parse(command)
 
-        return when {
+        return when (parsedCommand.type) {
 
-            // Ulubione kryptowaluty
-            cleanCommand == "moje ulubione" -> {
-                showMyFavorites()
-            }
-
-            // Aktywne alerty
-            cleanCommand == "aktywne alerty" -> {
-                showMyAlerts(true)
-            }
-
-            // Wykonane alerty
-            cleanCommand == "wykonane alerty" -> {
-                showMyAlerts(false)
-            }
-
-            cleanCommand == "pomoc" -> {
+            BotCommandType.HELP ->
                 getHelpText()
-            }
 
-            cleanCommand == "moje alerty" -> {
-                showMyAlerts()
-            }
+            BotCommandType.PRICE ->
+                showCoinPrice(parsedCommand.coinQuery)
 
-            // Największe wzrosty cen
-            cleanCommand == "top wzrosty" -> {
+            BotCommandType.INFO ->
+                showCoinInfo(parsedCommand.coinQuery)
+
+            BotCommandType.TOP_GAINERS ->
                 showTopMovers(true)
-            }
 
-            // Największe spadki cen
-            cleanCommand == "top spadki" -> {
+            BotCommandType.TOP_LOSERS ->
                 showTopMovers(false)
-            }
 
-            // Szczegółowe informacje o kryptowalucie
-            parts[0] == "info" -> {
+            BotCommandType.FAVORITES ->
+                showMyFavorites()
 
-                if (parts.size < 2) {
-                    return "Poprawna komenda: info bitcoin"
-                }
+            BotCommandType.ALL_ALERTS ->
+                showMyAlerts()
 
-                val query = parts.drop(1).joinToString(" ")
+            BotCommandType.ACTIVE_ALERTS ->
+                showMyAlerts(true)
 
-                showCoinInfo(query)
-            }
+            BotCommandType.COMPLETED_ALERTS ->
+                showMyAlerts(false)
 
-            parts[0] == "cena" -> {
+            BotCommandType.CREATE_ALERT -> {
 
-                if (parts.size != 2) {
-                    return "Poprawna komenda: cena bitcoin"
-                }
-
-                showCoinPrice(parts[1])
-            }
-
-            parts[0] == "alert" -> {
-
-                if (parts.size != 4) {
-                    return "Poprawna komenda: alert bitcoin powyżej 100000"
-                }
-
-                val coinId = parts[1]
-                val conditionText = parts[2]
-
-                val price = parts[3]
-                    .replace(",", ".")
-                    .toDoubleOrNull()
+                val conditionText =
+                    if (parsedCommand.condition == "ABOVE") {
+                        "powyżej"
+                    } else {
+                        "poniżej"
+                    }
 
                 addPriceAlert(
-                    coinId = coinId,
+                    coinId = parsedCommand.coinQuery,
                     conditionText = conditionText,
-                    price = price
+                    price = parsedCommand.price
                 )
             }
 
-            parts[0] == "usuń" || parts[0] == "usun" -> {
-
-                if (parts.size != 3 || parts[1] != "alert") {
-                    return "Poprawna komenda: usuń alert bitcoin"
-                }
+            BotCommandType.DELETE_ALERT -> {
 
                 try {
-                    // Szukanie kryptowaluty po nazwie lub symbolu
-                    val coin = findCoin(parts[2])
-                        ?: return "Nie znaleziono kryptowaluty: ${parts[2]}"
+
+                    val coin = findCoin(parsedCommand.coinQuery)
+                        ?: return "Nie znaleziono kryptowaluty: ${parsedCommand.coinQuery}"
 
                     deleteAlert(coin.id)
 
                 } catch (e: CancellationException) {
                     throw e
+
                 } catch (e: Exception) {
+
                     "Nie udało się usunąć alertu. ${e.message ?: ""}"
                 }
             }
 
-            else -> {
-                "Nie rozumiem komendy. Wpisz pomoc, aby zobaczyć przykłady."
-            }
+            BotCommandType.INVALID ->
+
+                parsedCommand.error
+                    ?: "Nie rozumiem komendy."
         }
     }
+
 
     // Wyświetlanie największych wzrostów i spadków
     private suspend fun showTopMovers(
@@ -442,13 +422,8 @@ class BotViewModel : ViewModel() {
         price: Double?
     ): String {
 
-        // Sprawdzenie poprawności i zakresu ceny
-        if (
-            price == null ||
-            !price.isFinite() ||
-            price <= 0 ||
-            price > 1_000_000_000_000.0
-        ) {
+        // Sprawdzenie poprawności ceny alertu
+        if (price == null || !AlertValidator.isValidPrice(price)) {
             return "Cena musi być większa od zera i nie może przekraczać 1 biliona USD."
         }
 

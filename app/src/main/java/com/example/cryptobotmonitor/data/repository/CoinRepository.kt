@@ -10,7 +10,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import retrofit2.HttpException
 
-class CoinRepository {
+class CoinRepository : CoinRepositoryInterface {
 
     companion object {
 
@@ -38,7 +38,8 @@ class CoinRepository {
     }
 
     // Pobieranie listy kryptowalut
-    suspend fun getCoins(): List<CoinModel> = mutex.withLock {
+    override suspend fun getCoins(): List<CoinModel> =
+        mutex.withLock {
 
         val now = SystemClock.elapsedRealtime()
 
@@ -84,7 +85,7 @@ class CoinRepository {
     }
 
     // Pobieranie kryptowalut po ID
-    suspend fun getCoinsByIds(
+    override suspend fun getCoinsByIds(
         ids: String
     ): List<CoinModel> = mutex.withLock {
 
@@ -145,10 +146,9 @@ class CoinRepository {
         }
     }
 
-    // Pobieranie danych do wykresu
-    suspend fun getMarketChart(
+    override suspend fun getMarketChart(
         coinId: String,
-        days: String = "7"
+        days: String
     ): MarketChartModel = mutex.withLock {
 
         val key = "${coinId}_${days}"

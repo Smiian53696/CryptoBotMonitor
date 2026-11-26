@@ -1,6 +1,7 @@
 
 package com.example.cryptobotmonitor.presentation.home
-
+import com.example.cryptobotmonitor.data.repository.CoinRepositoryInterface
+import com.example.cryptobotmonitor.data.repository.FavoriteRepositoryInterface
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,10 +19,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 // ViewModel przechowuje dane dla ekranu głównego
-class HomeViewModel : ViewModel() {
+class HomeViewModel(
+    private val repository: CoinRepositoryInterface =
+        CoinRepository(),
 
-    private val repository = CoinRepository()
-    private val favoriteRepository = FavoriteRepository()
+    private val favoriteRepository: FavoriteRepositoryInterface =
+        FavoriteRepository()
+
+) : ViewModel() {
 
     // Zadanie odpowiedzialne za odświeżanie danych
     private var refreshJob: Job? = null
