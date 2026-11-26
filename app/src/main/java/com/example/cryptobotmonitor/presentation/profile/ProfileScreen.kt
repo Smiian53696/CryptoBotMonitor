@@ -223,10 +223,7 @@ fun ProfileScreen(
 
                 HorizontalDivider(color = CryptoBorder)
 
-                ProfileInfoRow(
-                    label = "Motyw aplikacji",
-                    value = "Ciemny"
-                )
+
             }
 
             Spacer(modifier = Modifier.height(20.dp))
