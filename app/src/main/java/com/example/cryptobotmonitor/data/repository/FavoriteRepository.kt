@@ -7,7 +7,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.tasks.await
 
-class FavoriteRepository {
+class FavoriteRepository : FavoriteRepositoryInterface {
 
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
@@ -16,7 +16,7 @@ class FavoriteRepository {
     private val favoritesCollection = firestore.collection("favorites")
 
     // Dodawanie kryptowaluty do ulubionych
-    suspend fun addFavorite(
+    override suspend fun addFavorite(
         coinId: String,
         coinName: String
     ) {
@@ -39,7 +39,7 @@ class FavoriteRepository {
     }
 
     // Usuwanie kryptowaluty z ulubionych
-    suspend fun removeFavorite(coinId: String) {
+    override suspend fun removeFavorite(coinId: String) {
         val userId = auth.currentUser?.uid
             ?: throw IllegalStateException("Użytkownik nie jest zalogowany.")
 
@@ -52,7 +52,7 @@ class FavoriteRepository {
     }
 
     // Pobieranie ulubionych kryptowalut użytkownika
-    fun observeUserFavorites(
+    override fun observeUserFavorites(
         onResult: (List<FavoriteCoin>) -> Unit,
         onError: (String) -> Unit
     ): ListenerRegistration? {
@@ -86,7 +86,7 @@ class FavoriteRepository {
     }
 
     // Pobieranie listy ulubionych kryptowalut
-    suspend fun getUserFavorites(): List<FavoriteCoin> {
+    override suspend fun getUserFavorites(): List<FavoriteCoin> {
 
         val userId = auth.currentUser?.uid
             ?: throw IllegalStateException(

@@ -1,7 +1,7 @@
 
 package com.example.cryptobotmonitor.presentation.auth
-
-import android.util.Patterns
+import com.example.cryptobotmonitor.data.auth.AuthRepositoryInterface
+import com.example.cryptobotmonitor.validation.AuthValidator
 import androidx.lifecycle.ViewModel
 import com.example.cryptobotmonitor.data.auth.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,9 +16,9 @@ data class AuthUiState(
     val error: String? = null
 )
 
-class AuthViewModel : ViewModel() {
-
-    private val repository = AuthRepository()
+class AuthViewModel(
+    private val repository: AuthRepositoryInterface = AuthRepository()
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
@@ -40,25 +40,19 @@ class AuthViewModel : ViewModel() {
     }
 
     // Sprawdzanie poprawności danych
+
+    // Sprawdzanie poprawności danych
     private fun validateData(
         email: String,
         password: String,
         isRegister: Boolean
     ): Boolean {
 
-        val error = when {
-
-            email.isBlank() || password.isBlank() ->
-                "Wpisz email i hasło."
-
-            !Patterns.EMAIL_ADDRESS.matcher(email).matches() ->
-                "Podaj poprawny adres email."
-
-            isRegister && password.length < 6 ->
-                "Hasło musi mieć minimum 6 znaków."
-
-            else -> null
-        }
+        val error = AuthValidator.validateData(
+            email = email,
+            password = password,
+            isRegister = isRegister
+        )
 
         if (error != null) {
 
@@ -72,13 +66,16 @@ class AuthViewModel : ViewModel() {
         return true
     }
 
+
     // Logowanie użytkownika
     fun login(onSuccess: () -> Unit) {
 
         // Blokada kolejnego zapytania
         if (uiState.value.isLoading) return
 
-        val email = uiState.value.email.trim()
+        val email = AuthValidator.normalizeEmail(
+            uiState.value.email
+        )
         val password = uiState.value.password
 
         if (!validateData(email, password, false)) {
@@ -108,7 +105,9 @@ class AuthViewModel : ViewModel() {
         // Blokada kolejnego zapytania
         if (uiState.value.isLoading) return
 
-        val email = uiState.value.email.trim()
+        val email = AuthValidator.normalizeEmail(
+            uiState.value.email
+        )
         val password = uiState.value.password
 
         if (!validateData(email, password, true)) {

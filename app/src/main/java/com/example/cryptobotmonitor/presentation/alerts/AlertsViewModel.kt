@@ -1,5 +1,6 @@
 package com.example.cryptobotmonitor.presentation.alerts
-
+import com.example.cryptobotmonitor.data.repository.AlertRepositoryInterface
+import com.example.cryptobotmonitor.data.repository.CoinRepositoryInterface
 import androidx.lifecycle.viewModelScope
 import com.example.cryptobotmonitor.data.model.CoinModel
 import com.example.cryptobotmonitor.data.repository.CoinRepository
@@ -12,7 +13,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-
+import com.example.cryptobotmonitor.validation.AlertValidator
 
 data class AlertsUiState(
     val alerts: List<PriceAlert> = emptyList(),
@@ -38,10 +39,14 @@ data class AlertsUiState(
 )
 
 
-class AlertsViewModel : ViewModel() {
+class AlertsViewModel(
+    private val repository: AlertRepositoryInterface =
+        AlertRepository(),
 
-    private val repository = AlertRepository()
-    private val coinRepository = CoinRepository()
+    private val coinRepository: CoinRepositoryInterface =
+        CoinRepository()
+
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AlertsUiState())
     val uiState: StateFlow<AlertsUiState> = _uiState
@@ -182,14 +187,15 @@ class AlertsViewModel : ViewModel() {
         // Blokada ponownego zapisu
         if (state.isSaving) return
 
-        // Zamiana przecinka na kropkę
-        val price = state.targetPrice
-            .trim()
-            .replace(",", ".")
-            .toDoubleOrNull()
+        // Zamiana tekstu na liczbę
+        val price = AlertValidator.parsePrice(state.targetPrice)
 
         // Sprawdzenie kryptowaluty
-        if (state.coinId.isBlank() || state.coinName.isBlank()) {
+        if (!AlertValidator.isValidCoin(
+                state.coinId,
+                state.coinName
+            )
+        ) {
             _uiState.update {
                 it.copy(
                     error = "Wybierz kryptowalutę.",
@@ -200,13 +206,8 @@ class AlertsViewModel : ViewModel() {
         }
 
 
-        // Sprawdzenie poprawności i zakresu ceny
-        if (
-            price == null ||
-            !price.isFinite() ||
-            price <= 0 ||
-            price > 1_000_000_000_000.0
-        ) {
+        // Sprawdzenie poprawności ceny
+        if (price == null || !AlertValidator.isValidPrice(price)) {
             _uiState.update {
                 it.copy(
                     error = "Cena musi być większa od zera i nie może przekraczać 1 biliona USD.",
@@ -217,9 +218,7 @@ class AlertsViewModel : ViewModel() {
         }
 
         // Sprawdzenie warunku alertu
-        if (state.condition != "ABOVE" &&
-            state.condition != "BELOW"
-        ) {
+        if (!AlertValidator.isValidCondition(state.condition)) {
             _uiState.update {
                 it.copy(error = "Wybierz poprawny warunek alertu.")
             }

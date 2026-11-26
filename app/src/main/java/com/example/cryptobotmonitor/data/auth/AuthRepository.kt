@@ -9,7 +9,7 @@ import com.google.firebase.auth.FirebaseUser
 
 class AuthRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
-) {
+) : AuthRepositoryInterface {
 
     // Pobranie aktualnego użytkownika
     fun getCurrentUser(): FirebaseUser? {
@@ -22,7 +22,7 @@ class AuthRepository(
     }
 
     // Rejestracja użytkownika
-    fun register(
+    override fun register(
         email: String,
         password: String,
         onResult: (Boolean, String?) -> Unit
@@ -48,7 +48,7 @@ class AuthRepository(
     }
 
     // Logowanie użytkownika
-    fun login(
+    override fun login(
         email: String,
         password: String,
         onResult: (Boolean, String?) -> Unit

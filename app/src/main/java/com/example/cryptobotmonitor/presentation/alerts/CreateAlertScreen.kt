@@ -1,6 +1,6 @@
 
 package com.example.cryptobotmonitor.presentation.alerts
-
+import com.example.cryptobotmonitor.validation.AlertValidator
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -71,15 +71,9 @@ fun CreateAlertScreen(
         }
     }
 
-    val price = state.targetPrice
-        .trim()
-        .replace(",", ".")
-        .toDoubleOrNull()
-
-    val validPrice = price != null &&
-            price.isFinite() &&
-            price > 0 &&
-            price <= 1_000_000_000_000.0
+    // Sprawdzenie ceny wpisanej w formularzu
+    val price = AlertValidator.parsePrice(state.targetPrice)
+    val validPrice = AlertValidator.isValidPrice(price)
 
     Column(
         modifier = Modifier

@@ -1,5 +1,5 @@
 package com.example.cryptobotmonitor.presentation.details
-
+import com.example.cryptobotmonitor.domain.ChartDataProcessor
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -49,7 +49,7 @@ fun PriceLineChart(
     }
 
     val sortedPoints = remember(points) {
-        points.sortedBy { it.time }
+        ChartDataProcessor.sortPoints(points)
     }
 
     // Kolory wykresu
@@ -68,28 +68,24 @@ fun PriceLineChart(
 
     val selectedPoint = sortedPoints[selectedIndex]
 
-    val minPrice = sortedPoints.minOf { it.price }
-    val maxPrice = sortedPoints.maxOf { it.price }
-
     // Zakres cen na osi Y
-    val padding = if (maxPrice == minPrice) {
-        maxOf(abs(maxPrice) * 0.01, 0.00000001)
-    } else {
-        (maxPrice - minPrice) * 0.05
-    }
+    val range = remember(sortedPoints) {
+        ChartDataProcessor.calculatePriceRange(sortedPoints)
+    } ?: return
 
-    val lowerPrice = minPrice - padding
-    val upperPrice = maxPrice + padding
-    val priceRange = upperPrice - lowerPrice
+    val lowerPrice = range.lowerPrice
+    val upperPrice = range.upperPrice
+    val priceRange = range.priceRange
 
     // Zakres czasu na osi X
     val startTime = sortedPoints.first().time
-    val endTime = sortedPoints.last().time
 
-    val timeRange = (endTime - startTime)
-        .coerceAtLeast(1L)
+    val timeRange = remember(sortedPoints) {
+        ChartDataProcessor.calculateTimeRange(sortedPoints)
+    }
 
-    val isShortPeriod = timeRange <= 86_400_000L
+    val isShortPeriod =
+        ChartDataProcessor.isShortPeriod(timeRange)
 
     val axisDateFormat = remember(isShortPeriod) {
         SimpleDateFormat(
@@ -384,18 +380,11 @@ private fun findNearestPoint(
     chartWidth: Float
 ): Int {
 
-    val fraction = (touchX / chartWidth)
-        .coerceIn(0f, 1f)
-
-    val firstTime = points.first().time
-    val lastTime = points.last().time
-
-    val selectedTime = firstTime +
-            ((lastTime - firstTime) * fraction).toLong()
-
-    return points.indices.minByOrNull { index ->
-        abs(points[index].time - selectedTime)
-    } ?: 0
+    return ChartDataProcessor.findNearestPoint(
+        points = points,
+        touchX = touchX,
+        chartWidth = chartWidth
+    )
 }
 
 // Formatowanie ceny na wykresie

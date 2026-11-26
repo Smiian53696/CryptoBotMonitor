@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cryptobotmonitor.data.repository.AlertRepository
 import com.example.cryptobotmonitor.data.repository.FavoriteRepository
-import com.google.firebase.auth.FirebaseAuth
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +13,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
+import com.example.cryptobotmonitor.data.auth.CurrentUserProvider
+import com.example.cryptobotmonitor.data.auth.FirebaseCurrentUserProvider
+import com.example.cryptobotmonitor.data.repository.FavoriteRepositoryInterface
+import com.example.cryptobotmonitor.data.repository.AlertRepositoryInterface
 // Stan ekranu profilu
 data class ProfileUiState(
     val email: String = "",
@@ -24,11 +27,17 @@ data class ProfileUiState(
     val error: String? = null
 )
 
-class ProfileViewModel : ViewModel() {
+class ProfileViewModel(
+    private val userProvider: CurrentUserProvider =
+        FirebaseCurrentUserProvider(),
 
-    private val auth = FirebaseAuth.getInstance()
-    private val favoriteRepository = FavoriteRepository()
-    private val alertRepository = AlertRepository()
+    private val favoriteRepository: FavoriteRepositoryInterface =
+        FavoriteRepository(),
+
+    private val alertRepository: AlertRepositoryInterface =
+        AlertRepository()
+
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> =
@@ -45,7 +54,7 @@ class ProfileViewModel : ViewModel() {
 
         loadJob?.cancel()
 
-        val user = auth.currentUser
+        val user = userProvider.getCurrentUser()
 
         if (user == null) {
 
@@ -76,7 +85,13 @@ class ProfileViewModel : ViewModel() {
                 val alerts =
                     alertRepository.getUserAlertsOnce()
 
-                if (auth.currentUser?.uid != user.uid) {
+                if (userProvider.getCurrentUser()?.uid != user.uid) {
+
+                    _uiState.value = ProfileUiState(
+                        isLoading = false,
+                        error = "Użytkownik został zmieniony."
+                    )
+
                     return@launch
                 }
 
