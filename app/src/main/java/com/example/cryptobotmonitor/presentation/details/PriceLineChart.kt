@@ -1,6 +1,11 @@
-
 package com.example.cryptobotmonitor.presentation.details
 
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import com.example.cryptobotmonitor.ui.theme.CryptoAccent
+import com.example.cryptobotmonitor.ui.theme.CryptoBorder
+import com.example.cryptobotmonitor.ui.theme.CryptoTextSecondary
 import android.graphics.Paint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -48,12 +53,13 @@ fun PriceLineChart(
     }
 
     // Kolory wykresu
-    val lineColor = MaterialTheme.colorScheme.primary
-    val gridColor =
-        MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+    val lineColor = CryptoAccent
 
-    val labelColor =
-        MaterialTheme.colorScheme.onSurfaceVariant
+    val gridColor = CryptoBorder.copy(
+        alpha = 0.65f
+    )
+
+    val labelColor = CryptoTextSecondary
 
     // Wybrany punkt wykresu
     var selectedIndex by remember(sortedPoints) {
@@ -112,7 +118,7 @@ fun PriceLineChart(
 
         Text(
             text = "${formatChartPrice(selectedPoint.price)} USD",
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = lineColor
         )
@@ -210,7 +216,13 @@ fun PriceLineChart(
                     color = gridColor,
                     start = Offset(0f, y),
                     end = Offset(chartWidth, y),
-                    strokeWidth = 1.dp.toPx()
+                    strokeWidth = 1.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(
+                        floatArrayOf(
+                            4.dp.toPx(),
+                            4.dp.toPx()
+                        )
+                    )
                 )
 
                 drawContext.canvas.nativeCanvas.drawText(
@@ -310,9 +322,17 @@ fun PriceLineChart(
 
             fillPath.close()
 
+            // Wypełnienie gradientowe pod wykresem
             drawPath(
                 path = fillPath,
-                color = lineColor.copy(alpha = 0.12f)
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        lineColor.copy(alpha = 0.28f),
+                        lineColor.copy(alpha = 0.0f)
+                    ),
+                    startY = 0f,
+                    endY = chartHeight
+                )
             )
 
             // Rysowanie linii ceny
@@ -320,7 +340,9 @@ fun PriceLineChart(
                 path = linePath,
                 color = lineColor,
                 style = Stroke(
-                    width = 2.dp.toPx()
+                    width = 2.5.dp.toPx(),
+                    cap = StrokeCap.Round,
+                    join = StrokeJoin.Round
                 )
             )
 

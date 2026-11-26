@@ -199,11 +199,17 @@ class AlertsViewModel : ViewModel() {
             return
         }
 
-        // Sprawdzenie poprawności ceny
-        if (price == null || !price.isFinite() || price <= 0) {
+
+        // Sprawdzenie poprawności i zakresu ceny
+        if (
+            price == null ||
+            !price.isFinite() ||
+            price <= 0 ||
+            price > 1_000_000_000_000.0
+        ) {
             _uiState.update {
                 it.copy(
-                    error = "Cena musi być poprawna i większa od zera.",
+                    error = "Cena musi być większa od zera i nie może przekraczać 1 biliona USD.",
                     message = null
                 )
             }

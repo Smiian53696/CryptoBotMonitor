@@ -442,9 +442,14 @@ class BotViewModel : ViewModel() {
         price: Double?
     ): String {
 
-        // Sprawdzenie poprawności ceny
-        if (price == null || !price.isFinite() || price <= 0) {
-            return "Podaj poprawną cenę większą od zera."
+        // Sprawdzenie poprawności i zakresu ceny
+        if (
+            price == null ||
+            !price.isFinite() ||
+            price <= 0 ||
+            price > 1_000_000_000_000.0
+        ) {
+            return "Cena musi być większa od zera i nie może przekraczać 1 biliona USD."
         }
 
         // Sprawdzenie warunku alertu
@@ -525,6 +530,8 @@ class BotViewModel : ViewModel() {
 
                 "${alert.coinName}: cena $conditionText ${alert.targetPrice} USD, status: $status"
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             "Nie udało się pobrać alertów."
         }
@@ -540,6 +547,8 @@ class BotViewModel : ViewModel() {
             } else {
                 "Nie znaleziono alertu dla: $coinId"
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             "Nie udało się usunąć alertu."
         }

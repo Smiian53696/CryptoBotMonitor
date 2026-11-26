@@ -1,11 +1,16 @@
 
 package com.example.cryptobotmonitor.presentation.navigation
-
+import com.example.cryptobotmonitor.presentation.alerts.CreateAlertScreen
 import android.net.Uri
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.cryptobotmonitor.presentation.alerts.AlertsScreen
@@ -14,7 +19,11 @@ import com.example.cryptobotmonitor.presentation.auth.RegisterScreen
 import com.example.cryptobotmonitor.presentation.bot.BotScreen
 import com.example.cryptobotmonitor.presentation.details.DetailsScreen
 import com.example.cryptobotmonitor.presentation.home.HomeScreen
+import com.example.cryptobotmonitor.presentation.home.HomeViewModel
+import com.example.cryptobotmonitor.ui.theme.CryptoBackground
+import com.example.cryptobotmonitor.ui.theme.CryptoTextPrimary
 import com.google.firebase.auth.FirebaseAuth
+import com.example.cryptobotmonitor.presentation.profile.ProfileScreen
 
 // Główna nawigacja aplikacji
 @Composable
@@ -70,14 +79,15 @@ private fun AuthNavigation() {
         startDestination = "login"
     ) {
 
-        // Ekran logowania
         composable("login") {
 
             LoginScreen(
                 onLoginSuccess = {
                     // Zmiana ekranu przez AuthStateListener
                 },
+
                 onRegisterClick = {
+
                     navController.navigate("register") {
                         launchSingleTop = true
                     }
@@ -85,13 +95,13 @@ private fun AuthNavigation() {
             )
         }
 
-        // Ekran rejestracji
         composable("register") {
 
             RegisterScreen(
                 onRegisterSuccess = {
                     // Zmiana ekranu przez AuthStateListener
                 },
+
                 onLoginClick = {
                     navController.popBackStack()
                 }
@@ -108,115 +118,242 @@ private fun UserNavigation(
 
     val navController = rememberNavController()
 
-    NavHost(
-        navController = navController,
-        startDestination = "home"
-    ) {
+    val backStackEntry by
+    navController.currentBackStackEntryAsState()
 
-        // Ekran główny
-        composable("home") {
+    val currentRoute =
+        backStackEntry?.destination?.route
 
-            HomeScreen(
-                onCoinClick = { coinId ->
+    // Ekrany z dolnym paskiem nawigacji
+    val bottomBarRoutes = setOf(
+        "home",
+        "favorites",
+        "alerts",
+        "bot"
+    )
 
-                    val encodedCoinId = Uri.encode(coinId)
+    val showBottomBar = currentRoute in bottomBarRoutes
 
-                    navController.navigate(
-                        "details/$encodedCoinId"
-                    ) {
-                        launchSingleTop = true
-                    }
-                },
-                onAlertsClick = {
+    // Przechodzenie między głównymi ekranami
+    val navigateToTab: (String) -> Unit = { route ->
 
-                    navController.navigate("alerts") {
-                        launchSingleTop = true
-                    }
-                },
-                onBotClick = {
+        navController.navigate(route) {
 
-                    navController.navigate("bot") {
-                        launchSingleTop = true
-                    }
-                },
-                onLogoutClick = onLogout
-            )
+            popUpTo("home") {
+                saveState = true
+            }
+
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
+    // Przejście do szczegółów kryptowaluty
+    val openDetails: (String) -> Unit = { coinId ->
+
+        val encodedCoinId = Uri.encode(coinId)
+
+        navController.navigate(
+            "details/$encodedCoinId"
+        ) {
+            launchSingleTop = true
+        }
+    }
+
+    Scaffold(
+
+        modifier = Modifier.fillMaxSize(),
+
+        containerColor = CryptoBackground,
+        contentColor = CryptoTextPrimary,
+
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+
+        bottomBar = {
+
+            if (showBottomBar) {
+
+                BottomNavigationBar(
+                    currentRoute = currentRoute,
+                    onNavigate = navigateToTab
+                )
+            }
         }
 
-        // Ekran alertów cenowych
-        composable(
-            route = "alerts?coinId={coinId}&coinName={coinName}",
-            arguments = listOf(
-                navArgument("coinId") {
-                    type = NavType.StringType
-                    defaultValue = ""
-                },
-                navArgument("coinName") {
-                    type = NavType.StringType
-                    defaultValue = ""
-                }
-            )
-        ) { backStackEntry ->
+    ) { innerPadding ->
 
-            val coinId =
-                backStackEntry.arguments?.getString("coinId") ?: ""
+        NavHost(
+            navController = navController,
+            startDestination = "home",
 
-            val coinName =
-                backStackEntry.arguments?.getString("coinName") ?: ""
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+        ) {
 
-            AlertsScreen(
-                initialCoinId = coinId,
-                initialCoinName = coinName,
-                onBackClick = {
-                    navController.popBackStack()
-                }
-            )
-        }
+            // Główny ekran rynku
+            composable("home") { entry ->
 
-        // Ekran szczegółów kryptowaluty
-        composable(
-            route = "details/{coinId}",
-            arguments = listOf(
-                navArgument("coinId") {
-                    type = NavType.StringType
-                }
-            )
-        ) { backStackEntry ->
+                val homeViewModel: HomeViewModel =
+                    viewModel(viewModelStoreOwner = entry)
 
-            val coinId =
-                backStackEntry.arguments?.getString("coinId") ?: ""
+                HomeScreen(
+                    viewModel = homeViewModel,
+                    onlyFavorites = false,
+                    onCoinClick = openDetails,
 
-            DetailsScreen(
-                coinId = coinId,
-                onBackClick = {
-                    navController.popBackStack()
-                },
-                onCreateAlertClick = {
-                        selectedCoinId, selectedCoinName ->
-
-                    val encodedCoinId =
-                        Uri.encode(selectedCoinId)
-
-                    val encodedCoinName =
-                        Uri.encode(selectedCoinName)
-
-                    navController.navigate(
-                        "alerts?coinId=$encodedCoinId&coinName=$encodedCoinName"
-                    ) {
-                        launchSingleTop = true
+                    onProfileClick = {
+                        navController.navigate("profile") {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
-        }
+                )
+            }
 
-        // Ekran bota tekstowego
-        composable("bot") {
+            // Ekran ulubionych kryptowalut
+            // Ekran ulubionych kryptowalut
+            composable("favorites") { entry ->
 
-            BotScreen(
-                onBackClick = {
-                    navController.popBackStack()
+                val homeEntry = remember(entry) {
+                    navController.getBackStackEntry("home")
                 }
-            )
+
+                // Wspólny ViewModel dla rynku i ulubionych
+                val homeViewModel: HomeViewModel =
+                    viewModel(viewModelStoreOwner = homeEntry)
+
+                HomeScreen(
+                    viewModel = homeViewModel,
+                    onlyFavorites = true,
+                    onCoinClick = openDetails,
+
+                    onProfileClick = {
+                        navController.navigate("profile") {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+
+            // Główny ekran alertów
+            // Główny ekran alertów
+            composable("alerts") {
+
+                AlertsScreen(
+                    onCreateAlertClick = {
+
+                        navController.navigate("createAlert") {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+
+            // Szczegóły kryptowaluty
+            composable(
+                route = "details/{coinId}",
+
+                arguments = listOf(
+
+                    navArgument("coinId") {
+                        type = NavType.StringType
+                    }
+                )
+
+            ) { entry ->
+
+                val coinId =
+                    entry.arguments?.getString("coinId") ?: ""
+
+                DetailsScreen(
+                    coinId = coinId,
+
+                    onBackClick = {
+                        navController.popBackStack()
+                    },
+
+                    onCreateAlertClick = {
+                            selectedCoinId, selectedCoinName ->
+
+                        val encodedCoinId =
+                            Uri.encode(selectedCoinId)
+
+                        val encodedCoinName =
+                            Uri.encode(selectedCoinName)
+
+                        navController.navigate(
+                            "createAlert?coinId=$encodedCoinId" +
+                                    "&coinName=$encodedCoinName"
+                        ) {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+
+
+// Formularz tworzenia alertu
+            composable(
+                route = "createAlert?coinId={coinId}&coinName={coinName}",
+
+                arguments = listOf(
+
+                    navArgument("coinId") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+
+                    navArgument("coinName") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    }
+                )
+
+            ) { entry ->
+
+                val coinId =
+                    entry.arguments?.getString("coinId") ?: ""
+
+                val coinName =
+                    entry.arguments?.getString("coinName") ?: ""
+
+                CreateAlertScreen(
+                    initialCoinId = coinId,
+                    initialCoinName = coinName,
+
+                    onBackClick = {
+                        navController.popBackStack()
+                    },
+
+                    onAlertSaved = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+
+
+
+
+
+            // Ekran bota tekstowego
+            composable("bot") {
+                BotScreen()
+            }
+
+            // Ekran profilu użytkownika
+            composable("profile") {
+
+                ProfileScreen(
+                    onBackClick = {
+                        navController.popBackStack()
+                    },
+
+                    onLogoutClick = onLogout
+                )
+            }
         }
     }
 }
+
