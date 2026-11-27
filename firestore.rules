@@ -1,0 +1,144 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Sprawdzenie czy użytkownik jest zalogowany
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Sprawdzenie właściciela dokumentu
+    function isOwner(data) {
+      return isSignedIn()
+        && data.userId == request.auth.uid;
+    }
+
+    // Sprawdzenie poprawności tekstu
+    function isValidText(value) {
+      return value is string
+        && value.size() > 0
+        && value.size() <= 200;
+    }
+
+    // Sprawdzenie poprawności alertu
+    function isValidAlert(data, alertId) {
+
+      let fields = [
+        'id',
+        'userId',
+        'coinId',
+        'coinName',
+        'targetPrice',
+        'condition',
+        'active',
+        'createdAt'
+      ];
+
+      return data.keys().hasAll(fields)
+        && data.keys().hasOnly(fields)
+
+        && data.id is string
+        && data.id == alertId
+
+        && data.userId is string
+
+        && isValidText(data.coinId)
+        && isValidText(data.coinName)
+
+        && data.targetPrice is number
+        && data.targetPrice > 0
+        && data.targetPrice <= 1000000000000
+
+        && data.condition is string
+        && data.condition in ['ABOVE', 'BELOW']
+
+        && data.active is bool
+
+        && data.createdAt is int
+        && data.createdAt > 0;
+    }
+
+    // Sprawdzenie poprawności ulubionej kryptowaluty
+    function isValidFavorite(data, favoriteId) {
+
+      let fields = [
+        'id',
+        'userId',
+        'coinId',
+        'coinName',
+        'createdAt'
+      ];
+
+      return data.keys().hasAll(fields)
+        && data.keys().hasOnly(fields)
+
+        && data.id is string
+        && data.id == favoriteId
+
+        && data.userId is string
+
+        && isValidText(data.coinId)
+        && isValidText(data.coinName)
+
+        && favoriteId == data.userId + "_" + data.coinId
+
+        && data.createdAt is int
+        && data.createdAt > 0;
+    }
+
+    // Reguły dla alertów cenowych
+    match /alerts/{alertId} {
+
+      // Tworzenie własnego aktywnego alertu
+      allow create: if isOwner(request.resource.data)
+        && isValidAlert(request.resource.data, alertId)
+        && request.resource.data.active == true;
+
+      // Odczyt i usuwanie własnych alertów
+      allow read, delete: if isOwner(resource.data);
+
+      // Aktualizacja statusu alertu
+      allow update: if isOwner(resource.data)
+        && isOwner(request.resource.data)
+        && isValidAlert(request.resource.data, alertId)
+        && request.resource.data.diff(resource.data)
+          .affectedKeys().hasOnly(['active'])
+        && resource.data.active == true
+        && request.resource.data.active == false;
+    }
+
+    // Reguły dla ulubionych kryptowalut
+    match /favorites/{favoriteId} {
+
+      // Dodawanie własnej kryptowaluty
+      allow create: if isOwner(request.resource.data)
+        && isValidFavorite(
+          request.resource.data,
+          favoriteId
+        );
+
+      // Odczyt i usuwanie własnych dokumentów
+      allow read, delete: if isOwner(resource.data);
+
+      // Aktualizacja danych ulubionej kryptowaluty
+      allow update: if isOwner(resource.data)
+        && isOwner(request.resource.data)
+        && isValidFavorite(
+          request.resource.data,
+          favoriteId
+        )
+        && request.resource.data.diff(resource.data)
+          .affectedKeys().hasOnly([
+            'coinName',
+            'createdAt'
+          ]);
+    }
+
+    // Blokada dostępu do pozostałych kolekcji
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

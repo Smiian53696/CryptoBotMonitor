@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "457458126590",
+    "project_id": "cryptobotmonitor-980fb",
+    "storage_bucket": "cryptobotmonitor-980fb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:457458126590:android:42950915045a8b942f9faf",
+        "android_client_info": {
+          "package_name": "com.example.cryptobotmonitor"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDCE6dma3bReKvhA6EIdd2FU29NwJcjumo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
